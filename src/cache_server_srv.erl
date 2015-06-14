@@ -37,7 +37,7 @@ start_link() ->
 %% ====================================================================
 init([]) ->
 	Ttl = get_env(ttl, 3600),
-	TabName = get_env(tab_name, def_cache),
+	TabName = get_env(tab_name, cache),
 	TabName = cache_server_api:init_db(TabName),
     {ok, #state{ttl = Ttl, tab_name = TabName}}.
 
