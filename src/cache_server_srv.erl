@@ -18,7 +18,10 @@ start_link() ->
 %% ====================================================================
 %% Behavioural functions 
 %% ====================================================================
--record(state, {}).
+-record(state, {
+				tab_name,
+				ttl
+				}).
 
 %% init/1
 %% ====================================================================
@@ -33,7 +36,10 @@ start_link() ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init([]) ->
-    {ok, #state{}}.
+	Ttl = get_env(ttl, 3600),
+	TabName = get_env(tab_name, def_cache),
+	TabName = cache_server_api:init_db(TabName),
+    {ok, #state{ttl = Ttl, tab_name = TabName}}.
 
 
 %% handle_call/3
@@ -117,4 +123,8 @@ code_change(OldVsn, State, Extra) ->
 %% Internal functions
 %% ====================================================================
 
-
+get_env(Key, Def) ->
+	case application:get_env(Key) of
+		{ok, Val} -> Val;
+		undefined -> Def
+	end.

@@ -2,7 +2,9 @@
  [
   {description, ""},
   {vsn, "0.1.0"},
+  {id,"git"},
   {registered, []},
+  {modules,[]},
   {applications, [
                   kernel,
                   stdlib
