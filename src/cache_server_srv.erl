@@ -51,7 +51,7 @@ init([]) ->
 	Ttl = get_env(ttl, 3600),
 	TabName = get_env(tab_name, cache),
 	TtlCheckPeriod = get_env(ttl_check_period, 60),
-	TabName = cache_server_api:init_db(TabName),
+	TabName = cache_server_storage:init_db(TabName),
 	check_ttl(TtlCheckPeriod),
 	case get_env(tcp_api_enabled, false) of
 		false -> do_nothing;
@@ -97,7 +97,7 @@ handle_call({tcp_command, Data}, _From, #state{tab_name = TabName, ttl = Ttl} = 
 
 handle_call({api_insert, {Key, Value}}, _From, #state{tab_name = TabName} = State) ->
 	Reply = try
-				cache_server_api:insert(TabName, Key, Value)
+				cache_server_storage:insert(TabName, Key, Value)
 			catch
 				_:_ -> wrong_command
 			end,
@@ -105,7 +105,7 @@ handle_call({api_insert, {Key, Value}}, _From, #state{tab_name = TabName} = Stat
 
 handle_call({api_delete, Key}, _From, #state{tab_name = TabName} = State) ->
 	Reply = try
-				cache_server_api:delete(TabName, Key)
+				cache_server_storage:delete(TabName, Key)
 			catch
 				_:_ -> wrong_command
 			end,
@@ -113,7 +113,7 @@ handle_call({api_delete, Key}, _From, #state{tab_name = TabName} = State) ->
 
 handle_call({api_lookup, Key}, _From, #state{tab_name = TabName, ttl = Ttl} = State) ->
 	Reply = try
-				cache_server_api:lookup(TabName, Key, Ttl)
+				cache_server_storage:lookup(TabName, Key, Ttl)
 			catch
 				_:_ -> wrong_command
 			end,
@@ -121,7 +121,7 @@ handle_call({api_lookup, Key}, _From, #state{tab_name = TabName, ttl = Ttl} = St
 
 handle_call({api_lookup_by_date, {DateFrom, DateTo}}, _From, #state{tab_name = TabName, ttl = Ttl} = State) ->
 	Reply = try
-				cache_server_api:lookup_by_date(TabName, DateFrom, DateTo, Ttl)
+				cache_server_storage:lookup_by_date(TabName, DateFrom, DateTo, Ttl)
 			catch
 				_:_ -> wrong_command
 			end,
@@ -159,7 +159,7 @@ handle_cast(_Msg, State) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 handle_info(check_ttl, #state{ttl_check_period = TtlCheckPeriod, tab_name = TabName, ttl = Ttl} = State) ->
-	cache_server_api:gc(TabName, Ttl),
+	cache_server_storage:gc(TabName, Ttl),
 	check_ttl(TtlCheckPeriod),
 	{noreply, State};
 
@@ -197,16 +197,16 @@ code_change(_OldVsn, State, _Extra) ->
 %% ====================================================================
 
 process_command(<<"get">>, Key, TabName, Ttl) ->
-	Res = cache_server_api:lookup(TabName, Key, Ttl),
+	Res = cache_server_storage:lookup(TabName, Key, Ttl),
 	term_to_binary(Res);
 
 process_command(<<"del">>, Key, TabName, _) ->
-	Res = cache_server_api:delete(TabName, Key),
+	Res = cache_server_storage:delete(TabName, Key),
 	term_to_binary(Res);
 
 process_command(<<"set">>, Params, TabName, _) ->
 	[Key, Value] = binary:split(Params, <<" ">>),
-	Res = cache_server_api:insert(TabName, Key, Value),
+	Res = cache_server_storage:insert(TabName, Key, Value),
 	term_to_binary(Res);
 
 process_command(_, _, _, _) ->

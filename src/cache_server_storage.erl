@@ -1,7 +1,7 @@
 %% @author vetal
-%% @doc @todo Add description to cache_server_api.
+%% @doc @todo Add description to cache_server_storage.
 
--module(cache_server_api).
+-module(cache_server_storage).
 
 %% ====================================================================
 %% API functions
