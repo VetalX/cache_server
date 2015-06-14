@@ -39,14 +39,14 @@ loop(Socket, Transport, RecvTimeout) ->
 %% ====================================================================
 
 process_command(<<"get ", Key/binary>>) ->
-	gen_server:call(cache_server_srv, {api_lookup, Key});
+	cache_server_srv:lookup(Key);
 
 process_command(<<"del ", Key/binary>>) ->
-	gen_server:call(cache_server_srv, {api_delete, Key});
+	cache_server_srv:delete(Key);
 
 process_command(<<"set ", Rest/binary>>) ->
 	[Key, Value] = binary:split(Rest, <<" ">>),
-	gen_server:call(cache_server_srv, {api_insert, {Key, Value}});
+	cache_server_srv:insert(Key, Value);
 
 process_command(_) ->
 	<<"wrong command">>.
