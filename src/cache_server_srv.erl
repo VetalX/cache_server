@@ -49,17 +49,10 @@ lookup_by_date(DateFrom, DateTo) ->
 %% ====================================================================
 init([]) ->
 	Ttl = get_env(ttl, 3600),
-	TabName = get_env(tab_name, cache),
 	TtlCheckPeriod = get_env(ttl_check_period, 60),
+	TabName = get_env(tab_name, cache),
 	TabName = cache_server_storage:init_db(TabName),
 	check_ttl(TtlCheckPeriod),
-	case get_env(tcp_api_enabled, false) of
-		false -> do_nothing;
-		true -> 
-			Port = get_env(tcp_api_port, 5555),
-			{ok, _} = ranch:start_listener(tcp_api, 100, ranch_tcp, [{port, Port}], cache_server_tcp, []);
-		_ -> exit(wrong_config)
-    end,
 	{ok, #state{ttl = Ttl, tab_name = TabName, ttl_check_period = TtlCheckPeriod}}.
 
 
@@ -80,20 +73,6 @@ init([]) ->
 	Timeout :: non_neg_integer() | infinity,
 	Reason :: term().
 %% ====================================================================
-
-handle_call({tcp_command, <<"\r\n">>}, _From, State) ->
-	{reply, <<>>, State};
-
-handle_call({tcp_command, Data}, _From, #state{tab_name = TabName, ttl = Ttl} = State) when is_binary(Data) ->
-	Reply = try
-				[Command, Tail] = binary:split(Data, <<" ">>),
-				TailSize = byte_size(Tail)-2, %% remove /r/n
-				<<Params:TailSize/binary, _/binary>> = Tail,
-				process_command(Command, Params, TabName, Ttl)
-			catch
-				_:_ -> <<"wrong command">>
-			end,
-	{reply, Reply, State};
 
 handle_call({api_insert, {Key, Value}}, _From, #state{tab_name = TabName} = State) ->
 	Reply = try
@@ -195,22 +174,6 @@ code_change(_OldVsn, State, _Extra) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
-process_command(<<"get">>, Key, TabName, Ttl) ->
-	Res = cache_server_storage:lookup(TabName, Key, Ttl),
-	term_to_binary(Res);
-
-process_command(<<"del">>, Key, TabName, _) ->
-	Res = cache_server_storage:delete(TabName, Key),
-	term_to_binary(Res);
-
-process_command(<<"set">>, Params, TabName, _) ->
-	[Key, Value] = binary:split(Params, <<" ">>),
-	Res = cache_server_storage:insert(TabName, Key, Value),
-	term_to_binary(Res);
-
-process_command(_, _, _, _) ->
-	<<"wrong command">>.
 
 check_ttl(TtlCheckPeriod) ->
 	erlang:send_after(TtlCheckPeriod * 1000, self(), check_ttl).
