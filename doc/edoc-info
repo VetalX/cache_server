@@ -1,0 +1,4 @@
+%% encoding: UTF-8
+{application,cache_server}.
+{packages,[]}.
+{modules,[cache_server_app,cache_server_srv,cache_server_sup]}.
