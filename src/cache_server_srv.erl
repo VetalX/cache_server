@@ -9,18 +9,30 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start_link/0]).
+-export([start_link/0, insert/2, delete/1, lookup/1, lookup_by_date/2]).
 
 start_link() ->
 	gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+insert(Key, Value) ->
+	gen_server:call(?MODULE, {api_insert, {Key, Value}}).
+
+delete(Key) ->
+	gen_server:call(?MODULE, {api_delete, Key}).
+
+lookup(Key) ->
+	gen_server:call(?MODULE, {api_lookup, Key}).
+
+lookup_by_date(DateFrom, DateTo) ->
+	gen_server:call(?MODULE, {api_lookup_by_date, {DateFrom, DateTo}}).
 
 %% ====================================================================
 %% Behavioural functions 
 %% ====================================================================
 -record(state, {
 				tab_name,
-				ttl
+				ttl,
+				ttl_check_period
 				}).
 
 %% init/1
@@ -38,8 +50,17 @@ start_link() ->
 init([]) ->
 	Ttl = get_env(ttl, 3600),
 	TabName = get_env(tab_name, cache),
+	TtlCheckPeriod = get_env(ttl_check_period, 60),
 	TabName = cache_server_api:init_db(TabName),
-    {ok, #state{ttl = Ttl, tab_name = TabName}}.
+	check_ttl(TtlCheckPeriod),
+	case get_env(tcp_api_enabled, false) of
+		false -> do_nothing;
+		true -> 
+			Port = get_env(tcp_api_port, 5555),
+			{ok, _} = ranch:start_listener(tcp_api, 100, ranch_tcp, [{port, Port}], cache_server_tcp, []);
+		_ -> exit(wrong_config)
+    end,
+	{ok, #state{ttl = Ttl, tab_name = TabName, ttl_check_period = TtlCheckPeriod}}.
 
 
 %% handle_call/3
@@ -59,7 +80,54 @@ init([]) ->
 	Timeout :: non_neg_integer() | infinity,
 	Reason :: term().
 %% ====================================================================
-handle_call(Request, From, State) ->
+
+handle_call({tcp_command, <<"\r\n">>}, _From, State) ->
+	{reply, <<>>, State};
+
+handle_call({tcp_command, Data}, _From, #state{tab_name = TabName, ttl = Ttl} = State) when is_binary(Data) ->
+	Reply = try
+				[Command, Tail] = binary:split(Data, <<" ">>),
+				TailSize = byte_size(Tail)-2, %% remove /r/n
+				<<Params:TailSize/binary, _/binary>> = Tail,
+				process_command(Command, Params, TabName, Ttl)
+			catch
+				_:_ -> <<"wrong command">>
+			end,
+	{reply, Reply, State};
+
+handle_call({api_insert, {Key, Value}}, _From, #state{tab_name = TabName} = State) ->
+	Reply = try
+				cache_server_api:insert(TabName, Key, Value)
+			catch
+				_:_ -> wrong_command
+			end,
+	{reply, Reply, State};
+
+handle_call({api_delete, Key}, _From, #state{tab_name = TabName} = State) ->
+	Reply = try
+				cache_server_api:delete(TabName, Key)
+			catch
+				_:_ -> wrong_command
+			end,
+	{reply, Reply, State};
+
+handle_call({api_lookup, Key}, _From, #state{tab_name = TabName, ttl = Ttl} = State) ->
+	Reply = try
+				cache_server_api:lookup(TabName, Key, Ttl)
+			catch
+				_:_ -> wrong_command
+			end,
+	{reply, Reply, State};
+
+handle_call({api_lookup_by_date, {DateFrom, DateTo}}, _From, #state{tab_name = TabName, ttl = Ttl} = State) ->
+	Reply = try
+				cache_server_api:lookup_by_date(TabName, DateFrom, DateTo, Ttl)
+			catch
+				_:_ -> wrong_command
+			end,
+	{reply, Reply, State};
+
+handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
 
@@ -75,7 +143,7 @@ handle_call(Request, From, State) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_cast(Msg, State) ->
+handle_cast(_Msg, State) ->
     {noreply, State}.
 
 
@@ -90,7 +158,12 @@ handle_cast(Msg, State) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_info(Info, State) ->
+handle_info(check_ttl, #state{ttl_check_period = TtlCheckPeriod, tab_name = TabName, ttl = Ttl} = State) ->
+	cache_server_api:gc(TabName, Ttl),
+	check_ttl(TtlCheckPeriod),
+	{noreply, State};
+
+handle_info(_Info, State) ->
     {noreply, State}.
 
 
@@ -103,7 +176,7 @@ handle_info(Info, State) ->
 			| {shutdown, term()}
 			| term().
 %% ====================================================================
-terminate(Reason, State) ->
+terminate(_Reason, _State) ->
     ok.
 
 
@@ -115,13 +188,32 @@ terminate(Reason, State) ->
 	OldVsn :: Vsn | {down, Vsn},
 	Vsn :: term().
 %% ====================================================================
-code_change(OldVsn, State, Extra) ->
+code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+process_command(<<"get">>, Key, TabName, Ttl) ->
+	Res = cache_server_api:lookup(TabName, Key, Ttl),
+	term_to_binary(Res);
+
+process_command(<<"del">>, Key, TabName, _) ->
+	Res = cache_server_api:delete(TabName, Key),
+	term_to_binary(Res);
+
+process_command(<<"set">>, Params, TabName, _) ->
+	[Key, Value] = binary:split(Params, <<" ">>),
+	Res = cache_server_api:insert(TabName, Key, Value),
+	term_to_binary(Res);
+
+process_command(_, _, _, _) ->
+	<<"wrong command">>.
+
+check_ttl(TtlCheckPeriod) ->
+	erlang:send_after(TtlCheckPeriod * 1000, self(), check_ttl).
 
 get_env(Key, Def) ->
 	case application:get_env(Key) of
