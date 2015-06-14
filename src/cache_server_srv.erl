@@ -33,7 +33,7 @@ lookup_by_date(DateFrom, DateTo) ->
 				tab_name,
 				ttl,
 				ttl_check_period
-				}).
+			   }).
 
 %% init/1
 %% ====================================================================
@@ -107,8 +107,8 @@ handle_call({api_lookup_by_date, {DateFrom, DateTo}}, _From, #state{tab_name = T
 	{reply, Reply, State};
 
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+	Reply = ok,
+	{reply, Reply, State}.
 
 
 %% handle_cast/2
