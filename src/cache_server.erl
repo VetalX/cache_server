@@ -22,6 +22,7 @@ start() ->
 	case get_env(http_api_enabled, false) of
 		false -> do_nothing;
 		true ->
+			application:ensure_started(ranch),
 			application:start(crypto),
 			application:start(cowlib),
 			application:start(cowboy),
