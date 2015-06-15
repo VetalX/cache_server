@@ -1,11 +1,11 @@
 # cache_server
 Home task of erlang academy
 
-# config
+## config
 * env/cache_server.config 
 
-# compile
+## compile
 * make
 
-# start
+## start
 * ./start.sh
