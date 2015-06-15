@@ -10,6 +10,7 @@
 -export([start/0]).
 
 start() ->
+	application:start(cache_server),
 	case get_env(tcp_api_enabled, false) of
 		false -> do_nothing;
 		true ->
@@ -34,8 +35,7 @@ start() ->
 										[{env, [{dispatch, Dispatch}]}]
 									   );
 		_ -> exit(wrong_config)
-	end,
-	application:start(cache_server).
+	end.
 
 %% ====================================================================
 %% Internal functions
