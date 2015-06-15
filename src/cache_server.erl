@@ -33,10 +33,7 @@ start() ->
 											 ]),
 			{ok, _} = cowboy:start_http(my_http_listener, 100, [{port, HttpPort}],
 										[{env, [{dispatch, Dispatch}]}]
-									   )
-	
-		;
-		% Port = get_env(http_api_port, 5555)
+									   );
 		_ -> exit(wrong_config)
 	end.
 
