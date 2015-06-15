@@ -25,7 +25,11 @@ loop(Socket, Transport, RecvTimeout) ->
 			case parse_data(Data) of
 				<<>> -> do_nothing;
 				Response -> 
-					Msg = term_to_binary(process_command(Response)),
+					Msg = case process_command(Response) of
+						{ok, OkRes} -> OkRes;
+						{error, ErrorRes} -> ErrorRes;
+						UndefRes -> term_to_binary(UndefRes)
+					end,
 					Tail = <<"\r\n">>,
 					Transport:send(Socket, <<Msg/binary, Tail/binary>>)
 			end,
@@ -49,7 +53,7 @@ process_command(<<"set ", Rest/binary>>) ->
 	cache_server_srv:insert(Key, Value);
 
 process_command(_) ->
-	<<"wrong command">>.
+	{error, <<"wrong command">>}.
 
 parse_data(B) when is_binary(B) ->
 	binary:part(B, {0, byte_size(B)-2}).

@@ -78,7 +78,7 @@ handle_call({api_insert, {Key, Value}}, _From, #state{tab_name = TabName} = Stat
 	Reply = try
 				cache_server_storage:insert(TabName, Key, Value)
 			catch
-				_:_ -> wrong_command
+				_:_ -> {error, <<"wrong_command">>}
 			end,
 	{reply, Reply, State};
 
@@ -86,7 +86,7 @@ handle_call({api_delete, Key}, _From, #state{tab_name = TabName} = State) ->
 	Reply = try
 				cache_server_storage:delete(TabName, Key)
 			catch
-				_:_ -> wrong_command
+				_:_ -> {error, <<"wrong_command">>}
 			end,
 	{reply, Reply, State};
 
@@ -94,7 +94,7 @@ handle_call({api_lookup, Key}, _From, #state{tab_name = TabName, ttl = Ttl} = St
 	Reply = try
 				cache_server_storage:lookup(TabName, Key, Ttl)
 			catch
-				_:_ -> wrong_command
+				_:_ -> {error, <<"wrong_command">>}
 			end,
 	{reply, Reply, State};
 
@@ -102,7 +102,7 @@ handle_call({api_lookup_by_date, {DateFrom, DateTo}}, _From, #state{tab_name = T
 	Reply = try
 				cache_server_storage:lookup_by_date(TabName, DateFrom, DateTo, Ttl)
 			catch
-				_:_ -> wrong_command
+				_:_ -> {error, <<"wrong_command">>}
 			end,
 	{reply, Reply, State};
 

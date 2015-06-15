@@ -32,11 +32,15 @@ parse_req(<<"POST">>, true, Req) ->
 		[{BinJson, true}] = PostVals,
 		Json = jsx:decode(BinJson),
 		Action = proplists:get_value(<<"action">>, Json),
-		Res = parse_command(Action, Json),
+		RespBody = case parse_command(Action, Json) of
+			{ok, OkRes} -> OkRes;
+			{error, ErrorRes} -> ErrorRes;
+			UndefRes -> term_to_binary(UndefRes)
+		end,
 		
 		cowboy_req:reply(200, [
 							   {<<"content-type">>, <<"text/plain; charset=utf-8">>}
-							  ], term_to_binary(Res), Req2)
+							  ], RespBody, Req2)
 	catch
 		_:_ -> cowboy_req:reply(500, [], <<"Wrong JSON format">>, Req2)
 	end;

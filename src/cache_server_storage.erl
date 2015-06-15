@@ -12,16 +12,19 @@ init_db(TabName) when is_atom(TabName) ->
 	TabName = ets:new(TabName, [public, named_table]).
 
 insert(TabName, Key, Value) when is_atom(TabName) ->
-	true = ets:insert(TabName, {Key, {Value, cur_time()}}).
+	case ets:insert(TabName, {Key, {Value, cur_time()}}) of
+		true -> {ok, <<"true">>};
+		_ -> {error, <<"insert_error">>}
+	end.
 
 lookup(TabName, Key, Ttl) when is_atom(TabName) ->
 	case ets:lookup(TabName, Key) of
-		[] -> undefined;
+		[] -> {error, <<"undefined">>};
 		[{Key, {Value, Time}}] -> 
 			Diff = cur_time() - Time,
 			if Diff < Ttl ->
 				   {ok, Value}; 
-			   true -> undefined
+			   true -> {error, <<"undefined">>}
 			end;
 		Err -> {error, Err}
 	end.
@@ -36,10 +39,13 @@ lookup_by_date(TabName, DateFrom, DateTo, Ttl) ->
 			true -> Acc
 		end
 	end,
-	ets:foldl(F, [], TabName).
+	{ok, ets:foldl(F, [], TabName)}.
 
 delete(TabName, Key) when is_atom(TabName) ->
-	true = ets:delete(TabName, Key).
+	case ets:delete(TabName, Key) of
+		true -> {ok, <<"true">>};
+		_ -> {error, <<"delete_error">>}
+	end.
 
 gc(TabName, Ttl) ->
 	CurTime = cur_time(),
