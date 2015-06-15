@@ -138,7 +138,7 @@ handle_cast(_Msg, State) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 handle_info(check_ttl, #state{ttl_check_period = TtlCheckPeriod, tab_name = TabName, ttl = Ttl} = State) ->
-	cache_server_storage:gc(TabName, Ttl),
+	proc_lib:spawn(fun() -> cache_server_storage:gc(TabName, Ttl) end),
 	check_ttl(TtlCheckPeriod),
 	{noreply, State};
 
