@@ -26,10 +26,10 @@ loop(Socket, Transport, RecvTimeout) ->
 				<<>> -> do_nothing;
 				Response -> 
 					Msg = case process_command(Response) of
-						{ok, OkRes} -> OkRes;
-						{error, ErrorRes} -> ErrorRes;
-						UndefRes -> term_to_binary(UndefRes)
-					end,
+							  {ok, OkRes} -> jsx:encode([<<"ok">>, OkRes]);
+							  {error, ErrorRes} -> jsx:encode([<<"error">>, ErrorRes]);
+							  UndefRes -> term_to_binary(UndefRes)
+						  end,
 					Tail = <<"\r\n">>,
 					Transport:send(Socket, <<Msg/binary, Tail/binary>>)
 			end,
@@ -45,6 +45,12 @@ loop(Socket, Transport, RecvTimeout) ->
 process_command(<<"get ", Key/binary>>) ->
 	cache_server_srv:lookup(Key);
 
+process_command(<<"get_by_date ", Params/binary>>) ->
+	[DateFrom, TimeFrom, DateTo, TimeTo] = split(Params, <<" ">>),
+	DateTimeFrom = binary_to_datetime(DateFrom, TimeFrom),
+	DateTimeTo = binary_to_datetime(DateTo, TimeTo),
+	cache_server_srv:lookup_by_date(DateTimeFrom, DateTimeTo);
+
 process_command(<<"del ", Key/binary>>) ->
 	cache_server_srv:delete(Key);
 
@@ -57,6 +63,26 @@ process_command(_) ->
 
 parse_data(B) when is_binary(B) ->
 	binary:part(B, {0, byte_size(B)-2}).
+
+binary_to_datetime(Date, Time) ->
+	[Year, Month, Day] = split(Date, <<"/">>),
+	[Hour, Minute, Sec] = split(Time, <<":">>),
+	{{bi(Year), bi(Month), bi(Day)},{bi(Hour), bi(Minute), bi(Sec)}}.
+
+bi(B) -> binary_to_integer(B).
+
+split(Bin, Split) when is_binary(Split) ->
+    split(Bin, byte_size(Split), Split, <<>>, []).
+
+split(Bin, SplitSize, Split, Acc1, Acc2) ->
+    case Bin of
+        <<Split:SplitSize/binary, Rest/binary>> ->
+            split(Rest, SplitSize, Split, <<>>, [Acc1 | Acc2]);
+        <<B:1/binary, Rest/binary>> ->
+            split(Rest, SplitSize, Split, <<Acc1/binary, B:1/binary>>, Acc2);
+        <<>> ->
+            lists:reverse([Acc1 | Acc2])
+    end.
 
 get_env(Key, Def) ->
 	case application:get_env(cache_server, Key) of

@@ -74,7 +74,7 @@ parse_command(<<"delete">>, Json) ->
 	cache_server_srv:delete(Key);
 
 parse_command(_, _) ->
-	<<"wrong_comand">>.
+	{error, <<"wrong_comand">>}.
 
 binary_to_datetime(BinDate) ->
 	[Date, Time] = split(BinDate, <<" ">>),
@@ -96,52 +96,3 @@ split(Bin, SplitSize, Split, Acc1, Acc2) ->
         <<>> ->
             lists:reverse([Acc1 | Acc2])
     end.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
