@@ -33,8 +33,8 @@ parse_req(<<"POST">>, true, Req) ->
 		Json = jsx:decode(BinJson),
 		Action = proplists:get_value(<<"action">>, Json),
 		RespBody = case parse_command(Action, Json) of
-			{ok, OkRes} -> OkRes;
-			{error, ErrorRes} -> ErrorRes;
+			{ok, OkRes} -> jsx:encode([<<"ok">>, OkRes]);
+			{error, ErrorRes} -> jsx:encode([<<"error">>, ErrorRes]);
 			UndefRes -> term_to_binary(UndefRes)
 		end,
 		
@@ -64,9 +64,84 @@ parse_command(<<"lookup">>, Json) ->
 	Key = proplists:get_value(<<"key">>, Json),
 	cache_server_srv:lookup(Key);
 
+parse_command(<<"lookup_by_date">>, Json) ->
+	DateFrom = binary_to_datetime(proplists:get_value(<<"date_from">>, Json)),
+	DateTo = binary_to_datetime(proplists:get_value(<<"date_to">>, Json)),
+	cache_server_srv:lookup_by_date(DateFrom, DateTo);
+
 parse_command(<<"delete">>, Json) ->
 	Key = proplists:get_value(<<"key">>, Json),
 	cache_server_srv:delete(Key);
 
 parse_command(_, _) ->
 	<<"wrong_comand">>.
+
+binary_to_datetime(BinDate) ->
+	[Date, Time] = split(BinDate, <<" ">>),
+	[Year, Month, Day] = split(Date, <<"/">>),
+	[Hour, Minute, Sec] = split(Time, <<":">>),
+	{{bi(Year), bi(Month), bi(Day)},{bi(Hour), bi(Minute), bi(Sec)}}.
+
+bi(B) -> binary_to_integer(B).
+
+split(Bin, Split) when is_binary(Split) ->
+    split(Bin, byte_size(Split), Split, <<>>, []).
+
+split(Bin, SplitSize, Split, Acc1, Acc2) ->
+    case Bin of
+        <<Split:SplitSize/binary, Rest/binary>> ->
+            split(Rest, SplitSize, Split, <<>>, [Acc1 | Acc2]);
+        <<B:1/binary, Rest/binary>> ->
+            split(Rest, SplitSize, Split, <<Acc1/binary, B:1/binary>>, Acc2);
+        <<>> ->
+            lists:reverse([Acc1 | Acc2])
+    end.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
