@@ -25,11 +25,16 @@ loop(Socket, Transport, RecvTimeout) ->
 			case parse_data(Data) of
 				<<>> -> do_nothing;
 				Response -> 
-					Msg = case process_command(Response) of
-							  {ok, OkRes} -> jsx:encode([<<"ok">>, OkRes]);
-							  {error, ErrorRes} -> jsx:encode([<<"error">>, ErrorRes]);
-							  UndefRes -> term_to_binary(UndefRes)
-						  end,
+					Msg = 
+						try
+							case process_command(Response) of
+								{ok, OkRes} -> jsx:encode([<<"ok">>, OkRes]);
+								{error, ErrorRes} -> jsx:encode([<<"error">>, ErrorRes]);
+								UndefRes -> term_to_binary(UndefRes)
+							end
+						catch 
+							_:_ -> jsx:encode([<<"error">>, <<"wrong comand">>])
+						end,
 					Tail = <<"\r\n">>,
 					Transport:send(Socket, <<Msg/binary, Tail/binary>>)
 			end,
