@@ -5,3 +5,5 @@ ebin
 erl_crash.dump
 .erlang.mk
 .erlang.mk.packages.v2
+relx
+_rel

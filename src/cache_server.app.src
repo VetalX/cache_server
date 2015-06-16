@@ -10,7 +10,8 @@
                   stdlib,
                   sasl,
                   cowboy,
-                  ranch
+                  ranch,
+                  jsx
                  ]},
   {mod, { cache_server_app, []}},
   {env, []}
