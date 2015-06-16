@@ -12,28 +12,28 @@
 -export([start_link/0, insert/2, delete/1, lookup/1, lookup_by_date/2]).
 
 start_link() ->
-	gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 insert(Key, Value) ->
-	gen_server:call(?MODULE, {api_insert, {Key, Value}}).
+    gen_server:call(?MODULE, {api_insert, {Key, Value}}).
 
 delete(Key) ->
-	gen_server:call(?MODULE, {api_delete, Key}).
+    gen_server:call(?MODULE, {api_delete, Key}).
 
 lookup(Key) ->
-	gen_server:call(?MODULE, {api_lookup, Key}).
+    gen_server:call(?MODULE, {api_lookup, Key}).
 
 lookup_by_date(DateFrom, DateTo) ->
-	gen_server:call(?MODULE, {api_lookup_by_date, {DateFrom, DateTo}}).
+    gen_server:call(?MODULE, {api_lookup_by_date, {DateFrom, DateTo}}).
 
 %% ====================================================================
 %% Behavioural functions 
 %% ====================================================================
 -record(state, {
-				tab_name,
-				ttl,
-				ttl_check_period
-			   }).
+                tab_name,
+                ttl,
+                ttl_check_period
+               }).
 
 %% init/1
 %% ====================================================================
@@ -75,40 +75,40 @@ init([]) ->
 %% ====================================================================
 
 handle_call({api_insert, {Key, Value}}, _From, #state{tab_name = TabName} = State) ->
-	Reply = try
-				cache_server_storage:insert(TabName, Key, Value)
-			catch
-				_:_ -> {error, <<"wrong_command">>}
-			end,
-	{reply, Reply, State};
+    Reply = try
+                cache_server_storage:insert(TabName, Key, Value)
+            catch
+                _:_ -> {error, <<"wrong_command">>}
+            end,
+    {reply, Reply, State};
 
 handle_call({api_delete, Key}, _From, #state{tab_name = TabName} = State) ->
-	Reply = try
-				cache_server_storage:delete(TabName, Key)
-			catch
-				_:_ -> {error, <<"wrong_command">>}
-			end,
-	{reply, Reply, State};
+    Reply = try
+                cache_server_storage:delete(TabName, Key)
+            catch
+                _:_ -> {error, <<"wrong_command">>}
+            end,
+    {reply, Reply, State};
 
 handle_call({api_lookup, Key}, _From, #state{tab_name = TabName, ttl = Ttl} = State) ->
-	Reply = try
-				cache_server_storage:lookup(TabName, Key, Ttl)
-			catch
-				_:_ -> {error, <<"wrong_command">>}
-			end,
-	{reply, Reply, State};
+    Reply = try
+                cache_server_storage:lookup(TabName, Key, Ttl)
+            catch
+                _:_ -> {error, <<"wrong_command">>}
+            end,
+    {reply, Reply, State};
 
 handle_call({api_lookup_by_date, {DateFrom, DateTo}}, _From, #state{tab_name = TabName, ttl = Ttl} = State) ->
-	Reply = try
-				cache_server_storage:lookup_by_date(TabName, DateFrom, DateTo, Ttl)
-			catch
-				_:_ -> {error, <<"wrong_command">>}
-			end,
-	{reply, Reply, State};
+    Reply = try
+                cache_server_storage:lookup_by_date(TabName, DateFrom, DateTo, Ttl)
+            catch
+                _:_ -> {error, <<"wrong_command">>}
+            end,
+    {reply, Reply, State};
 
 handle_call(_Request, _From, State) ->
-	Reply = ok,
-	{reply, Reply, State}.
+    Reply = ok,
+    {reply, Reply, State}.
 
 
 %% handle_cast/2
@@ -138,9 +138,9 @@ handle_cast(_Msg, State) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 handle_info(check_ttl, #state{ttl_check_period = TtlCheckPeriod, tab_name = TabName, ttl = Ttl} = State) ->
-	proc_lib:spawn(fun() -> cache_server_storage:gc(TabName, Ttl) end),
-	check_ttl(TtlCheckPeriod),
-	{noreply, State};
+    proc_lib:spawn(fun() -> cache_server_storage:gc(TabName, Ttl) end),
+    check_ttl(TtlCheckPeriod),
+    {noreply, State};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -176,10 +176,10 @@ code_change(_OldVsn, State, _Extra) ->
 %% ====================================================================
 
 check_ttl(TtlCheckPeriod) ->
-	erlang:send_after(TtlCheckPeriod * 1000, self(), check_ttl).
+    erlang:send_after(TtlCheckPeriod * 1000, self(), check_ttl).
 
 get_env(Key, Def) ->
-	case application:get_env(Key) of
-		{ok, Val} -> Val;
-		undefined -> Def
-	end.
+    case application:get_env(Key) of
+        {ok, Val} -> Val;
+        undefined -> Def
+    end.
