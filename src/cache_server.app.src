@@ -1,13 +1,16 @@
 {application, cache_server,
  [
-  {description, ""},
+  {description, "Home task erlang academy"},
   {vsn, "0.1.0"},
   {id,"git"},
   {registered, []},
   {modules,[]},
   {applications, [
                   kernel,
-                  stdlib
+                  stdlib,
+                  sasl,
+                  cowboy,
+                  ranch
                  ]},
   {mod, { cache_server_app, []}},
   {env, []}
